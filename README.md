@@ -1,8 +1,8 @@
 # 📢 Notice-plugin
 
-[![star](https://gitee.com/tttfff/notice-plugin/badge/star.svg?theme=gray)](https://gitee.com/tttfff/notice-plugin/stargazers)
-[![version](https://img.shields.io/badge/version-1.0.5-white)](https://gitee.com/tttfff/notice-plugin/releases)
-[![license](https://img.shields.io/badge/license-MIT-white)](https://gitee.com/tttfff/notice-plugin/blob/master/LICENSE)
+[![star](https://gitee.com/qingyingxbot/Notice-plugin/badge/star.svg?theme=gray)](https://gitee.com/qingyingxbot/Notice-plugin/stargazers)
+[![version](https://img.shields.io/badge/version-1.0.5-white)](https://gitee.com/qingyingxbot/Notice-plugin/releases)
+[![license](https://img.shields.io/badge/license-MIT-white)](https://gitee.com/qingyingxbot/Notice-plugin/blob/master/LICENSE)
 
 ---
 
@@ -37,7 +37,7 @@ Notice-plugin 是一个为 Yunzai-Bot 开发的公告插件，支持主人便捷
 
 ```bash
 # 使用 Git 安装
-$ git clone https://gitee.com/tttfff/notice-plugin.git ./plugins/Notice-plugin
+$ git clone https://gitee.com/qingyingxbot/Notice-plugin.git ./plugins/Notice-plugin
 
 # 进入插件目录
 $ cd ./plugins/Notice-plugin
@@ -201,7 +201,7 @@ Notice-plugin/
 ---
 
 ## 💬 问题反馈
-- 欢迎提交 [Issue](https://gitee.com/tttfff/notice-plugin/issue) 反馈问题或建议
+- 欢迎提交 [Issue](https://gitee.com/qingyingxbot/Notice-plugin/issue) 反馈问题或建议
 - 欢迎PR贡献代码，完善功能
 - QQ群：822074453
 

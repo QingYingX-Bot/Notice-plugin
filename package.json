@@ -1,0 +1,17 @@
+{
+  "name": "notice-plugin",
+  "version": "1.0.5",
+  "description": "一个功能强大的公告插件，支持多账号场景，允许主人发布、管理和推送全局公告。",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Created by AI",
+  "license": "MIT",
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "lodash": "^4.17.21",
+    "node-cron": "^3.0.2"
+  }
+}

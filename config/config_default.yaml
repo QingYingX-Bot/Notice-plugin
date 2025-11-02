@@ -1,0 +1,12 @@
+enableSchedule: true
+scheduleTime: "8:00-8:30"
+logger: "info"
+multiAccount:
+  enabled: true
+  defaultPushInterval: 2000
+  defaultRetryCount: 3
+  autoEnableNewAccounts: true
+pushSettings:
+  maxConcurrentAccounts: 5
+  progressReportInterval: 10
+  enableDetailedLogs: true

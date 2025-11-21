@@ -1,7 +1,7 @@
 # 📢 Notice-plugin
 
 [![star](https://gitee.com/qingyingxbot/Notice-plugin/badge/star.svg?theme=gray)](https://gitee.com/qingyingxbot/Notice-plugin/stargazers)
-[![version](https://img.shields.io/badge/version-1.0.5-white)](https://gitee.com/qingyingxbot/Notice-plugin/releases)
+[![version](https://img.shields.io/badge/version-1.0.6-white)](https://gitee.com/qingyingxbot/Notice-plugin/releases)
 [![license](https://img.shields.io/badge/license-MIT-white)](https://gitee.com/qingyingxbot/Notice-plugin/blob/master/LICENSE)
 
 ---
@@ -178,7 +178,7 @@ Notice-plugin/
 
 ### 基础配置
 - `enableSchedule`：是否开启定时推送任务（true/false）
-- `scheduleTime`：定时推送任务的时间段（如 "8:00-8:30"）
+- `scheduleTime`：定时推送任务的时间点（如 "8:00"，24小时制，若时间到了且存在未推送的公告则自动推送）
 - `logger`：日志级别配置（"debug" 或 "info"）
 
 ### 多账号配置 multiAccount

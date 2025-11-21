@@ -1,5 +1,4 @@
 import data from '../storage/redisStore.js'
-import lodash from 'lodash'
 import { info, warn, error } from '../utils/logger.js'
 
 // 常量定义
@@ -16,21 +15,27 @@ const DEFAULT_CONFIG = {
 const configCache = new Map()
 const CACHE_TTL = 30000 // 30秒缓存时间
 
+// Bot 实例缓存
+const botCache = {
+  bots: null,
+  timestamp: 0,
+  ttl: 5000 // 5秒缓存时间
+}
+
 // 工具函数
-async function logInfo(message) {
-  await info(message)
-}
-
-async function logWarn(message) {
-  await warn(message)
-}
-
-async function logError(message) {
-  await error(message)
-}
-
 function safeString(value) {
   return String(value || '')
+}
+
+function getBotNickname(bot) {
+  return bot?.nickname || bot?.info?.nickname || '未知'
+}
+
+function getBotGroups(bot) {
+  if (!bot?.gl || typeof bot.gl.keys !== 'function') {
+    return []
+  }
+  return Array.from(bot.gl.keys())
 }
 
 // 全局过滤函数
@@ -44,31 +49,35 @@ async function applyGlobalFilters(groups, uin = '') {
   }
   
   let filteredGroups = [...groups]
+  const originalCount = filteredGroups.length
   
   // 全局黑名单过滤（优先级最高）
   if (globalBlacklist.length > 0) {
-    const beforeBlacklist = filteredGroups.length
-    filteredGroups = filteredGroups.filter(gid => !globalBlacklist.includes(safeString(gid)))
-    const afterBlacklist = filteredGroups.length
-    if (beforeBlacklist !== afterBlacklist) {
-      await logInfo(`账号 ${uin} 全局黑名单过滤: ${beforeBlacklist} -> ${afterBlacklist}`)
-    }
+    const blacklistSet = new Set(globalBlacklist.map(safeString))
+    filteredGroups = filteredGroups.filter(gid => !blacklistSet.has(safeString(gid)))
   }
   
   // 全局白名单过滤
   if (globalWhitelist.length > 0) {
-    const beforeWhitelist = filteredGroups.length
-    filteredGroups = filteredGroups.filter(gid => globalWhitelist.includes(safeString(gid)))
-    const afterWhitelist = filteredGroups.length
-    if (beforeWhitelist !== afterWhitelist) {
-      await logInfo(`账号 ${uin} 全局白名单过滤: ${beforeWhitelist} -> ${afterWhitelist}`)
-    }
+    const whitelistSet = new Set(globalWhitelist.map(safeString))
+    filteredGroups = filteredGroups.filter(gid => whitelistSet.has(safeString(gid)))
+  }
+  
+  const filteredCount = filteredGroups.length
+  if (originalCount !== filteredCount) {
+    await info(`账号 ${uin} 全局名单过滤: ${originalCount} -> ${filteredCount}`)
   }
   
   return filteredGroups
 }
 
-export async function getAllBots() {
+export async function getAllBots(forceRefresh = false) {
+  // 检查缓存
+  const now = Date.now()
+  if (!forceRefresh && botCache.bots && (now - botCache.timestamp) < botCache.ttl) {
+    return botCache.bots
+  }
+  
   const bots = []
   
   try {
@@ -82,6 +91,8 @@ export async function getAllBots() {
     } 
     else if (global.Bot && global.Bot.uin) {
       if (global.Bot.uin === 'stdin') {
+        botCache.bots = []
+        botCache.timestamp = now
         return []
       }
       if (global.Bot[global.Bot.uin]) {
@@ -98,16 +109,26 @@ export async function getAllBots() {
           seenUins.add(bot.uin)
           uniqueBots.push(bot)
         } else {
-          await logWarn(`账号 ${bot.uin} 的 Bot 实例无效，跳过`)
+          await warn(`账号 ${bot.uin} 的 Bot 实例无效，跳过`)
         }
       }
     }
     
+    // 更新缓存
+    botCache.bots = uniqueBots
+    botCache.timestamp = now
+    
     return uniqueBots
   } catch (err) {
-    await logError(`获取 Bot 实例失败: ${err.message}`)
+    await error(`获取 Bot 实例失败: ${err.message}`)
     return []
   }
+}
+
+// 清除 Bot 缓存
+export function clearBotCache() {
+  botCache.bots = null
+  botCache.timestamp = 0
 }
 
 export async function getAccountGroups(uin) {
@@ -116,16 +137,16 @@ export async function getAccountGroups(uin) {
     const bot = bots.find(b => safeString(b.uin) === safeString(uin))
     
     if (!bot) {
-      await logWarn(`未找到账号 ${uin} 的 Bot 实例`)
+      await warn(`未找到账号 ${uin} 的 Bot 实例`)
       return []
     }
     
-    const groups = Array.from(bot.gl?.keys() || [])
-    await logInfo(`账号 ${uin} 获取到 ${groups.length} 个群`)
+    const groups = getBotGroups(bot)
+    await info(`账号 ${uin} 获取到 ${groups.length} 个群`)
     
     return groups
   } catch (err) {
-    await logError(`获取账号 ${uin} 群列表失败: ${err.message}`)
+    await error(`获取账号 ${uin} 群列表失败: ${err.message}`)
     return []
   }
 }
@@ -137,13 +158,13 @@ export async function getAllAccountGroups() {
   for (const bot of bots) {
     const uin = safeString(bot.uin)
     try {
-      const groups = Array.from(bot.gl?.keys() || [])
+      const groups = getBotGroups(bot)
       if (groups.length > 0) {
         result[uin] = groups
-        await logInfo(`账号 ${uin} 获取到 ${groups.length} 个群`)
+        await info(`账号 ${uin} 获取到 ${groups.length} 个群`)
       }
     } catch (err) {
-      await logError(`获取账号 ${uin} 群列表失败: ${err.message}`)
+      await error(`获取账号 ${uin} 群列表失败: ${err.message}`)
     }
   }
   
@@ -172,7 +193,7 @@ export async function getAccountConfig(uin) {
     
     return result
   } catch (error) {
-    logError(`获取账号 ${uinStr} 配置失败: ${error}`)
+    await error(`获取账号 ${uinStr} 配置失败: ${error}`)
     return DEFAULT_CONFIG
   }
 }
@@ -186,10 +207,10 @@ export async function updateAccountConfig(uin, config) {
     const cacheKey = `config:${uinStr}`
     configCache.delete(cacheKey)
     
-    await logInfo(`账号 ${uinStr} 配置更新成功`)
+    await info(`账号 ${uinStr} 配置更新成功`)
     return true
   } catch (err) {
-    await logError(`更新账号 ${uinStr} 配置失败: ${err.message}`)
+    await error(`更新账号 ${uinStr} 配置失败: ${err.message}`)
     return false
   }
 }
@@ -203,16 +224,15 @@ export async function filterAccountGroups(uin, groups) {
   const config = await getAccountConfig(uin)
   let filteredGroups = [...groups]
   
+  // 使用 Set 提高过滤性能
   if (config.whitelist && config.whitelist.length > 0) {
-    filteredGroups = filteredGroups.filter(gid => 
-      config.whitelist.includes(safeString(gid))
-    )
+    const whitelistSet = new Set(config.whitelist.map(safeString))
+    filteredGroups = filteredGroups.filter(gid => whitelistSet.has(safeString(gid)))
   }
   
   if (config.blacklist && config.blacklist.length > 0) {
-    filteredGroups = filteredGroups.filter(gid => 
-      !config.blacklist.includes(safeString(gid))
-    )
+    const blacklistSet = new Set(config.blacklist.map(safeString))
+    filteredGroups = filteredGroups.filter(gid => !blacklistSet.has(safeString(gid)))
   }
   
   return filteredGroups
@@ -225,11 +245,11 @@ export async function getAllPushableGroups() {
   // 获取全局名单信息用于日志
   const globalWhitelist = await data.updateList('whitelist', 'view', [])
   const globalBlacklist = await data.updateList('blacklist', 'view', [])
-  logInfo(`全局名单过滤: 白名单 ${globalWhitelist.length} 个, 黑名单 ${globalBlacklist.length} 个`)
+  await info(`全局名单过滤: 白名单 ${globalWhitelist.length} 个, 黑名单 ${globalBlacklist.length} 个`)
   
   for (const [uin, groups] of Object.entries(allGroups)) {
     if (!(await isAccountEnabled(uin))) {
-      logInfo(`账号 ${uin} 已禁用推送，跳过`)
+      await info(`账号 ${uin} 已禁用推送，跳过`)
       continue
     }
     
@@ -260,7 +280,7 @@ export async function getPushStats() {
   for (const bot of bots) {
     const uin = safeString(bot.uin)
     const config = await getAccountConfig(uin)
-    const groups = Array.from(bot.gl?.keys() || [])
+    const groups = getBotGroups(bot)
     
     // 应用与 getAllPushableGroups 相同的过滤逻辑
     let pushableGroups = []
@@ -278,7 +298,7 @@ export async function getPushStats() {
       enabled: config.enabled,
       totalGroups: groups.length,
       pushableGroups: pushableGroups.length,
-      nickname: bot.nickname || bot.info?.nickname || '未知'
+      nickname: getBotNickname(bot)
     })
   }
   

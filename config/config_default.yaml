@@ -1,5 +1,5 @@
 enableSchedule: true
-scheduleTime: "8:00-8:30"
+scheduleTime: "8:00"
 logger: "info"
 multiAccount:
   enabled: true

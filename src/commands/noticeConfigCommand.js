@@ -1,7 +1,20 @@
 import plugin from '../../../../lib/plugins/plugin.js'
-import { getAllBots, getAccountConfig, updateAccountConfig, getPushStats } from '../services/accountService.js'
+import { getAllBots, getAccountConfig, updateAccountConfig, getPushStats, clearBotCache } from '../services/accountService.js'
 import data from '../storage/redisStore.js'
 import { debug, info, warn, error } from '../utils/logger.js'
+
+// 工具函数：获取操作者信息
+function getOperatorInfo(e) {
+  return {
+    id: e.sender?.user_id || e.user_id || '未知',
+    name: e.sender?.card || e.sender?.nickname || '未知'
+  }
+}
+
+// 工具函数：获取 Bot 昵称
+function getBotNickname(bot) {
+  return bot?.nickname || bot?.info?.nickname || '未知'
+}
 
 // 获取所有机器人所在的群号
 async function getAllGroupIds() {
@@ -165,12 +178,9 @@ export class NoticeConfig extends plugin {
     }
 
     try {
-      const operationType = isAllOperation ? 'ALL' : '指定群号'
-      const operator = e.sender?.user_id || e.user_id || '未知'
-      const operatorName = e.sender?.card || e.sender?.nickname || '未知'
-      const chatType = e.isGroup ? `群聊(${e.group_id})` : '私聊'
+      const operator = getOperatorInfo(e)
       
-      await info(`开始执行全局名单操作 - 操作者: ${operatorName}(${operator}), 名单类型: ${listTypeKey === 'whitelist' ? '白名单' : '黑名单'}, 操作: ${actionKey}, 群号数量: ${groups.length}`)
+      await info(`开始执行全局名单操作 - 操作者: ${operator.name}(${operator.id}), 名单类型: ${listTypeKey === 'whitelist' ? '白名单' : '黑名单'}, 操作: ${actionKey}, 群号数量: ${groups.length}`)
       
       const result = await data.updateList(listTypeKey, actionKey, groups)
       
@@ -249,10 +259,9 @@ export class NoticeConfig extends plugin {
 
   async manageAccount (e) {
     const action = e.msg.replace('#公告账号', '')
-    const operator = e.sender?.user_id || e.user_id || '未知'
-    const operatorName = e.sender?.card || e.sender?.nickname || '未知'
+    const operator = getOperatorInfo(e)
     
-    await info(`账号管理操作 - 操作者: ${operatorName}(${operator}), 操作: ${action}`)
+    await info(`账号管理操作 - 操作者: ${operator.name}(${operator.id}), 操作: ${action}`)
     
     switch (action) {
       case '列表':
@@ -286,18 +295,18 @@ export class NoticeConfig extends plugin {
       return
     }
 
-    let msg = `当前登录账号列表 (共 ${bots.length} 个):\n`
+    let msg = `📋 当前登录账号列表 (共 ${bots.length} 个):\n`
     for (let i = 0; i < bots.length; i++) {
       const bot = bots[i]
       const uin = String(bot.uin)
-      const nickname = bot.nickname || bot.info?.nickname || '未知'
+      const nickname = getBotNickname(bot)
       const groups = Array.from(bot.gl?.keys() || [])
       const config = await getAccountConfig(uin)
       
       msg += `\n${i + 1}. ${nickname} (${uin})\n`
-      msg += `   群数: ${groups.length}\n`
-      msg += `   状态: ${config.enabled ? '启用' : '禁用'}\n`
-      msg += `   推送间隔: ${config.pushInterval || 2000}ms\n`
+      msg += `   📊 群数: ${groups.length}\n`
+      msg += `   ${config.enabled ? '✅' : '❌'} 状态: ${config.enabled ? '启用' : '禁用'}\n`
+      msg += `   ⏱️  推送间隔: ${config.pushInterval || 2000}ms\n`
     }
 
     await e.reply(msg, true)
@@ -314,32 +323,30 @@ export class NoticeConfig extends plugin {
     const globalWhitelist = await data.updateList('whitelist', 'view', [])
     const globalBlacklist = await data.updateList('blacklist', 'view', [])
 
-    let msg = '账号推送状态:\n'
+    let msg = '📊 账号推送状态:\n'
     msg += `\n【全局配置】\n`
-    msg += `  全局白名单: ${globalWhitelist.length} 个\n`
-    msg += `  全局黑名单: ${globalBlacklist.length} 个\n`
+    msg += `  ✅ 全局白名单: ${globalWhitelist.length} 个\n`
+    msg += `  ❌ 全局黑名单: ${globalBlacklist.length} 个\n`
     
     for (const bot of bots) {
       const uin = String(bot.uin)
-      const nickname = bot.nickname || bot.info?.nickname || '未知'
+      const nickname = getBotNickname(bot)
       const config = await getAccountConfig(uin)
       const groups = Array.from(bot.gl?.keys() || [])
       
       msg += `\n【${nickname} (${uin})】\n`
-      msg += `  状态: ${config.enabled ? '✅ 启用' : '❌ 禁用'}\n`
-      msg += `  群数: ${groups.length}\n`
-      msg += `  账号白名单: ${config.whitelist?.length || 0} 个\n`
-      msg += `  账号黑名单: ${config.blacklist?.length || 0} 个\n`
+      msg += `  ${config.enabled ? '✅' : '❌'} 状态: ${config.enabled ? '启用' : '禁用'}\n`
+      msg += `  📊 群数: ${groups.length}\n`
+      msg += `  ✅ 账号白名单: ${config.whitelist?.length || 0} 个\n`
+      msg += `  ❌ 账号黑名单: ${config.blacklist?.length || 0} 个\n`
     }
 
     await e.reply(msg, true)
   }
 
   async enableAllAccounts (e) {
-    const operator = e.sender?.user_id || e.user_id || '未知'
-    const operatorName = e.sender?.card || e.sender?.nickname || '未知'
-    
-    await info(`批量启用账号操作 - 操作者: ${operatorName}(${operator})`)
+    const operator = getOperatorInfo(e)
+    await info(`批量启用账号操作 - 操作者: ${operator.name}(${operator.id})`)
     
     const bots = await getAllBots()
     if (bots.length === 0) {
@@ -349,6 +356,8 @@ export class NoticeConfig extends plugin {
     }
 
     let successCount = 0
+    const failedAccounts = []
+    
     for (const bot of bots) {
       const uin = String(bot.uin)
       const config = await getAccountConfig(uin)
@@ -357,19 +366,26 @@ export class NoticeConfig extends plugin {
       if (await updateAccountConfig(uin, config)) {
         successCount++
       } else {
-        await error(`账号启用失败: ${bot.nickname || '未知'}(${uin})`)
+        const nickname = getBotNickname(bot)
+        failedAccounts.push(`${nickname}(${uin})`)
+        await error(`账号启用失败: ${nickname}(${uin})`)
       }
     }
 
+    // 清除缓存以确保下次获取最新状态
+    clearBotCache()
+
     await info(`批量启用账号完成 - 成功: ${successCount}/${bots.length}`)
-    await e.reply(`已启用 ${successCount}/${bots.length} 个账号的推送功能。`, true)
+    let replyMsg = `✅ 已启用 ${successCount}/${bots.length} 个账号的推送功能。`
+    if (failedAccounts.length > 0) {
+      replyMsg += `\n❌ 失败账号: ${failedAccounts.join(', ')}`
+    }
+    await e.reply(replyMsg, true)
   }
 
   async disableAllAccounts (e) {
-    const operator = e.sender?.user_id || e.user_id || '未知'
-    const operatorName = e.sender?.card || e.sender?.nickname || '未知'
-    
-    await info(`批量禁用账号操作 - 操作者: ${operatorName}(${operator})`)
+    const operator = getOperatorInfo(e)
+    await info(`批量禁用账号操作 - 操作者: ${operator.name}(${operator.id})`)
     
     const bots = await getAllBots()
     if (bots.length === 0) {
@@ -379,6 +395,8 @@ export class NoticeConfig extends plugin {
     }
 
     let successCount = 0
+    const failedAccounts = []
+    
     for (const bot of bots) {
       const uin = String(bot.uin)
       const config = await getAccountConfig(uin)
@@ -387,12 +405,21 @@ export class NoticeConfig extends plugin {
       if (await updateAccountConfig(uin, config)) {
         successCount++
       } else {
-        await error(`账号禁用失败: ${bot.nickname || '未知'}(${uin})`)
+        const nickname = getBotNickname(bot)
+        failedAccounts.push(`${nickname}(${uin})`)
+        await error(`账号禁用失败: ${nickname}(${uin})`)
       }
     }
 
+    // 清除缓存以确保下次获取最新状态
+    clearBotCache()
+
     await info(`批量禁用账号完成 - 成功: ${successCount}/${bots.length}`)
-    await e.reply(`已禁用 ${successCount}/${bots.length} 个账号的推送功能。`, true)
+    let replyMsg = `❌ 已禁用 ${successCount}/${bots.length} 个账号的推送功能。`
+    if (failedAccounts.length > 0) {
+      replyMsg += `\n⚠️  失败账号: ${failedAccounts.join(', ')}`
+    }
+    await e.reply(replyMsg, true)
   }
 
   async showAccountConfig (e) {
@@ -406,22 +433,22 @@ export class NoticeConfig extends plugin {
     const globalWhitelist = await data.updateList('whitelist', 'view', [])
     const globalBlacklist = await data.updateList('blacklist', 'view', [])
 
-    let msg = '账号配置详情:\n'
+    let msg = '⚙️  账号配置详情:\n'
     msg += `\n【全局配置】\n`
-    msg += `  全局白名单: ${globalWhitelist.join(', ') || '无'}\n`
-    msg += `  全局黑名单: ${globalBlacklist.join(', ') || '无'}\n`
+    msg += `  ✅ 全局白名单: ${globalWhitelist.length > 0 ? globalWhitelist.join(', ') : '无'}\n`
+    msg += `  ❌ 全局黑名单: ${globalBlacklist.length > 0 ? globalBlacklist.join(', ') : '无'}\n`
     
     for (const bot of bots) {
       const uin = String(bot.uin)
-      const nickname = bot.nickname || bot.info?.nickname || '未知'
+      const nickname = getBotNickname(bot)
       const config = await getAccountConfig(uin)
       
       msg += `\n【${nickname} (${uin})】\n`
-      msg += `  启用状态: ${config.enabled ? '是' : '否'}\n`
-      msg += `  推送间隔: ${config.pushInterval || 2000}ms\n`
-      msg += `  重试次数: ${config.retryCount || 3}\n`
-      msg += `  账号白名单: ${config.whitelist?.join(', ') || '无'}\n`
-      msg += `  账号黑名单: ${config.blacklist?.join(', ') || '无'}\n`
+      msg += `  ${config.enabled ? '✅' : '❌'} 启用状态: ${config.enabled ? '是' : '否'}\n`
+      msg += `  ⏱️  推送间隔: ${config.pushInterval || 2000}ms\n`
+      msg += `  🔄 重试次数: ${config.retryCount || 3}\n`
+      msg += `  ✅ 账号白名单: ${config.whitelist?.length > 0 ? config.whitelist.join(', ') : '无'}\n`
+      msg += `  ❌ 账号黑名单: ${config.blacklist?.length > 0 ? config.blacklist.join(', ') : '无'}\n`
     }
 
     await e.reply(msg, true)
@@ -430,18 +457,19 @@ export class NoticeConfig extends plugin {
   async showPushStats (e) {
     const stats = await getPushStats()
     
-    let msg = '推送统计信息:\n'
-    msg += `总账号数: ${stats.totalAccounts}\n`
-    msg += `启用账号数: ${stats.enabledAccounts}\n`
-    msg += `总群数: ${stats.totalGroups}\n`
-    msg += `可推送群数: ${stats.pushableGroups}\n`
+    let msg = '📊 推送统计信息:\n'
+    msg += `\n【总体统计】\n`
+    msg += `  👥 总账号数: ${stats.totalAccounts}\n`
+    msg += `  ✅ 启用账号数: ${stats.enabledAccounts}\n`
+    msg += `  📊 总群数: ${stats.totalGroups}\n`
+    msg += `  🎯 可推送群数: ${stats.pushableGroups}\n`
     
     if (stats.accounts.length > 0) {
-      msg += '\n各账号详情:\n'
+      msg += '\n【各账号详情】\n'
       for (const account of stats.accounts) {
-        msg += `${account.nickname} (${account.uin}):\n`
-        msg += `  状态: ${account.enabled ? '启用' : '禁用'}\n`
-        msg += `  群数: ${account.totalGroups}/${account.pushableGroups}\n`
+        msg += `\n${account.nickname} (${account.uin}):\n`
+        msg += `  ${account.enabled ? '✅' : '❌'} 状态: ${account.enabled ? '启用' : '禁用'}\n`
+        msg += `  📊 群数: ${account.totalGroups} (可推送: ${account.pushableGroups})\n`
       }
     }
 
@@ -457,22 +485,21 @@ export class NoticeConfig extends plugin {
     }
 
     const [, uin, configType, value] = match
-    const operator = e.sender?.user_id || e.user_id || '未知'
-    const operatorName = e.sender?.card || e.sender?.nickname || '未知'
+    const operator = getOperatorInfo(e)
     
-    await info(`账号配置操作 - 操作者: ${operatorName}(${operator}), 目标账号: ${uin}, 配置项: ${configType}, 值: ${value}`)
+    await info(`账号配置操作 - 操作者: ${operator.name}(${operator.id}), 目标账号: ${uin}, 配置项: ${configType}, 值: ${value}`)
     
     const bots = await getAllBots()
     const bot = bots.find(b => String(b.uin) === uin)
     
     if (!bot) {
       await warn(`未找到账号: ${uin}`)
-      await e.reply(`未找到账号 ${uin}。`, true)
+      await e.reply(`❌ 未找到账号 ${uin}。`, true)
       return
     }
 
     const config = await getAccountConfig(uin)
-    const nickname = bot.nickname || bot.info?.nickname || '未知'
+    const nickname = getBotNickname(bot)
     
     switch (configType) {
       case '启用':
@@ -503,11 +530,12 @@ export class NoticeConfig extends plugin {
     }
 
     if (await updateAccountConfig(uin, config)) {
+      clearBotCache() // 清除缓存
       await info(`账号配置更新成功 - 账号: ${nickname}(${uin}), 配置项: ${configType}, 新值: ${value}`)
-      await e.reply(`${nickname} (${uin}) 配置更新成功。`, true)
+      await e.reply(`✅ ${nickname} (${uin}) 配置更新成功。`, true)
     } else {
       await error(`账号配置更新失败 - 账号: ${nickname}(${uin}), 配置项: ${configType}, 值: ${value}`)
-      await e.reply('配置更新失败。', true)
+      await e.reply('❌ 配置更新失败，请查看日志。', true)
     }
   }
 
@@ -520,11 +548,10 @@ export class NoticeConfig extends plugin {
     }
 
     const [, listType, uin, action, groupIds] = match
-    const operator = e.sender?.user_id || e.user_id || '未知'
-    const operatorName = e.sender?.card || e.sender?.nickname || '未知'
+    const operator = getOperatorInfo(e)
     const listName = listType === '白' ? '白名单' : '黑名单'
     
-    await info(`账号名单操作 - 操作者: ${operatorName}(${operator}), 名单类型: ${listName}, 目标账号: ${uin || '当前账号'}, 操作: ${action}`)
+    await info(`账号名单操作 - 操作者: ${operator.name}(${operator.id}), 名单类型: ${listName}, 目标账号: ${uin || '当前账号'}, 操作: ${action}`)
     
     const bots = await getAllBots()
     
@@ -553,7 +580,7 @@ export class NoticeConfig extends plugin {
     }
 
     const config = await getAccountConfig(targetUin)
-    const nickname = bot.nickname || bot.info?.nickname || '未知'
+    const nickname = getBotNickname(bot)
     const listKey = listType === '白' ? 'whitelist' : 'blacklist'
     
     let groups = groupIds.match(/\d+/g) || []
@@ -582,11 +609,12 @@ export class NoticeConfig extends plugin {
         const addedCount = newCount - originalCount
         
         if (await updateAccountConfig(targetUin, config)) {
+          clearBotCache() // 清除缓存
           await info(`账号名单添加成功 - 账号: ${nickname}(${targetUin}), 名单类型: ${listName}, 新增: ${addedCount}, 总数: ${newCount}`)
-          await e.reply(`${nickname} (${targetUin}) ${listName}添加成功，共 ${groups.length} 个群。`, true)
+          await e.reply(`✅ ${nickname} (${targetUin}) ${listName}添加成功，新增 ${addedCount} 个群，共 ${newCount} 个。`, true)
         } else {
           await error(`账号名单添加失败 - 账号: ${nickname}(${targetUin}), 名单类型: ${listName}`)
-          await e.reply('操作失败。', true)
+          await e.reply('❌ 操作失败，请查看日志。', true)
         }
         break
         
@@ -603,11 +631,12 @@ export class NoticeConfig extends plugin {
         const deletedCount = beforeCount - afterCount
         
         if (await updateAccountConfig(targetUin, config)) {
+          clearBotCache() // 清除缓存
           await info(`账号名单删除成功 - 账号: ${nickname}(${targetUin}), 名单类型: ${listName}, 删除: ${deletedCount}, 剩余: ${afterCount}`)
-          await e.reply(`${nickname} (${targetUin}) ${listName}删除成功，共 ${groups.length} 个群。`, true)
+          await e.reply(`✅ ${nickname} (${targetUin}) ${listName}删除成功，删除 ${deletedCount} 个群，剩余 ${afterCount} 个。`, true)
         } else {
           await error(`账号名单删除失败 - 账号: ${nickname}(${targetUin}), 名单类型: ${listName}`)
-          await e.reply('操作失败。', true)
+          await e.reply('❌ 操作失败，请查看日志。', true)
         }
         break
         

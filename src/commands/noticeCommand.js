@@ -49,57 +49,103 @@ export class NoticeManagement extends plugin {
     const raw = e.raw_message || e.msg || ''
     await info('收到原始公告内容', { content: raw })
     const content = raw.replace(/^#发布公告/, '').trim()
-    if (!content) return e.reply('公告内容不能为空。', true)
+    
+    if (!content) {
+      await e.reply('❌ 公告内容不能为空。', true)
+      return
+    }
 
     try {
       const notice = await data.createNotice({ content, creator: e.user_id })
-      await e.reply(`公告发布成功！\nID: ${notice.id}`)
+      await e.reply(`✅ 公告发布成功！\n📋 ID: ${notice.id}`, true)
       await this.getNotice(e)
     } catch (err) {
-      await error('发布公告失败', { error: err.message })
-      await e.reply('公告发布失败，请查看日志。', true)
+      await error('发布公告失败', { error: err.message, stack: err.stack })
+      await e.reply('❌ 公告发布失败，请查看日志。', true)
     }
   }
 
   async editNotice (e) {
-    if (!(await data.getCurrentNotice())) return e.reply('当前没有可编辑的公告。', true)
+    const currentNotice = await data.getCurrentNotice()
+    if (!currentNotice) {
+      await e.reply('❌ 当前没有可编辑的公告。', true)
+      return
+    }
 
     const content = e.msg.replace('#编辑公告', '').trim()
-    if (!content) return e.reply('公告内容不能为空。', true)
+    if (!content) {
+      await e.reply('❌ 公告内容不能为空。', true)
+      return
+    }
 
-    if (await data.editNotice({ content })) {
-      await e.reply('公告编辑成功！', true)
-      await this.getNotice(e)
-    } else {
-      await e.reply('公告编辑失败。', true)
+    try {
+      if (await data.editNotice({ content })) {
+        await e.reply('✅ 公告编辑成功！', true)
+        await this.getNotice(e)
+      } else {
+        await e.reply('❌ 公告编辑失败，请查看日志。', true)
+      }
+    } catch (err) {
+      await error('编辑公告失败', { error: err.message, stack: err.stack })
+      await e.reply('❌ 公告编辑失败，请查看日志。', true)
     }
   }
 
   async recallNotice (e) {
-    await e.reply(await data.recallNotice() ? '当前公告已撤回。' : '没有需要撤回的公告。', true)
+    try {
+      const result = await data.recallNotice()
+      if (result) {
+        await e.reply('✅ 当前公告已撤回。', true)
+      } else {
+        await e.reply('❌ 没有需要撤回的公告。', true)
+      }
+    } catch (err) {
+      await error('撤回公告失败', { error: err.message, stack: err.stack })
+      await e.reply('❌ 撤回公告失败，请查看日志。', true)
+    }
   }
 
   _formatNoticeMsg(item, type = '当前') {
-    let title = '【当前公告】';
-    if (type === '上一条历史') title = '【上一条历史公告】';
-    if (type === '历史') title = 'ID: ' + item.id;
+    let title = '📢 【当前公告】'
+    if (type === '上一条历史') title = '📜 【上一条历史公告】'
+    if (type === '历史') title = `📋 ID: ${item.id}`
+    
+    const statusEmoji = item.status === '当前' ? '✅' : item.status === '已撤回' ? '❌' : '📦'
+    const pushEmoji = item.push === '已推送' ? '✅' : '⏳'
+    
     return [
-      `${title}\nID: ${item.id}${item.status ? `\n状态: ${item.status}` : ''}\n发布者: ${item.creator || ''}\n时间: ${item.timestamp}\n----------\n`,
+      `${title}\n📋 ID: ${item.id}\n${item.status ? `${statusEmoji} 状态: ${item.status}` : ''}\n${item.push ? `${pushEmoji} 推送: ${item.push}` : ''}\n👤 发布者: ${item.creator || '未知'}\n🕐 时间: ${item.timestamp}\n━━━━━━━━━━━━━━━━━━━━\n`,
       item.content
-    ];
+    ]
   }
 
   async getNotice (e) {
-    const notice = await data.getCurrentNotice()
-    if (!notice) return e.reply('当前没有公告。', true)
-    await e.reply(this._formatNoticeMsg(notice, '当前'))
+    try {
+      const notice = await data.getCurrentNotice()
+      if (!notice) {
+        await e.reply('❌ 当前没有公告。', true)
+        return
+      }
+      await e.reply(this._formatNoticeMsg(notice, '当前'))
+    } catch (err) {
+      await error('获取公告失败', { error: err.message, stack: err.stack })
+      await e.reply('❌ 获取公告失败，请查看日志。', true)
+    }
   }
 
   async getLastHistory (e) {
-    const history = await data.getHistory(1, 1)
-    if (history.length === 0) return e.reply('没有更多历史公告了。', true)
-    const item = history[0]
-    await e.reply(this._formatNoticeMsg(item, '上一条历史'))
+    try {
+      const history = await data.getHistory(1, 1)
+      if (history.length === 0) {
+        await e.reply('❌ 没有更多历史公告了。', true)
+        return
+      }
+      const item = history[0]
+      await e.reply(this._formatNoticeMsg(item, '上一条历史'))
+    } catch (err) {
+      await error('获取历史公告失败', { error: err.message, stack: err.stack })
+      await e.reply('❌ 获取历史公告失败，请查看日志。', true)
+    }
   }
 
   async getAllHistory (e) {

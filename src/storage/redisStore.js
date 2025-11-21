@@ -199,23 +199,35 @@ async function setNoticePushed (id) {
 }
 
 async function getAccountConfig (uin) {
+  try {
   const config = await redis.hGetAll(K.ACCOUNT_CONFIG(uin))
   if (lodash.isEmpty(config)) return {}
   
   const result = {}
   for (const [key, value] of Object.entries(config)) {
+      try {
     if (key === 'whitelist' || key === 'blacklist') {
       result[key] = value ? JSON.parse(value) : []
-    } else if (key === 'enabled' || key === 'retryCount') {
-      result[key] = value === 'true' || parseInt(value)
+        } else if (key === 'enabled') {
+          result[key] = value === 'true' || value === true
+        } else if (key === 'retryCount') {
+          result[key] = parseInt(value) || 0
     } else if (key === 'pushInterval' || key === 'lastPushTime') {
       result[key] = parseInt(value) || 0
     } else {
       result[key] = value
+        }
+      } catch (parseErr) {
+        await warn(`解析账号配置字段失败: ${key} = ${value}`, { error: parseErr.message })
+        result[key] = value // 保留原始值
     }
   }
   
   return result
+  } catch (err) {
+    await error(`获取账号配置失败: ${uin}`, { error: err.message })
+    return {}
+  }
 }
 
 async function updateAccountConfig (uin, config) {

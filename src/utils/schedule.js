@@ -1,5 +1,4 @@
 import cron from 'node-cron'
-import lodash from 'lodash'
 import { pushAnnouncement } from '../services/pushService.js'
 import { getAllBots } from '../services/accountService.js'
 import data from '../storage/redisStore.js'
@@ -10,18 +9,23 @@ let config = null
 
 function parseScheduleTime(scheduleTime) {
   if (typeof scheduleTime !== 'string') {
-    return { hour: 8, minStart: 0, minEnd: 30 }
+    return { hour: 8, minute: 0 }
   }
   
-  const match = scheduleTime.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):?(\d{2})?$/)
+  // 解析时间点格式：HH:MM 或 H:MM
+  const match = scheduleTime.match(/^(\d{1,2}):(\d{2})$/)
   if (match) {
     const hour = parseInt(match[1])
-    const minStart = parseInt(match[2])
-    const minEnd = match[4] ? parseInt(match[4]) : parseInt(match[3])
-    return { hour, minStart, minEnd }
+    const minute = parseInt(match[2])
+    
+    // 验证时间有效性
+    if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+      return { hour, minute }
+  }
   }
   
-  return { hour: 8, minStart: 0, minEnd: 30 }
+  // 默认返回 8:00
+  return { hour: 8, minute: 0 }
 }
 
 function checkBotAvailability(bot) {
@@ -51,14 +55,13 @@ export async function start() {
       return
     }
 
-    const { hour, minStart, minEnd } = parseScheduleTime(config.scheduleTime)
-    const minute = lodash.random(minStart, minEnd)
+    const { hour, minute } = parseScheduleTime(config.scheduleTime)
     const cronExpr = `${minute} ${hour} * * *`
 
     cronJob = cron.schedule(cronExpr, async () => {
       logger.info(`[Notice-plugin] 开始执行每日定时公告推送，规则: ${cronExpr}`)
       
-      const bots = getAllBots()
+      const bots = await getAllBots()
       if (bots.length === 0) {
         logger.info('[Notice-plugin] 定时任务：没有登录的账号，跳过推送。')
         return
@@ -84,12 +87,17 @@ export async function start() {
       }
       
       const notice = await data.getCurrentNotice()
-      if (!notice || notice.status !== '当前' || notice.push !== '未推送') {
+      if (!notice) {
+        logger.info('[Notice-plugin] 定时任务：当前没有公告，跳过推送。')
+        return
+      }
+      
+      if (notice.status !== '当前' || notice.push !== '未推送') {
         logger.info('[Notice-plugin] 定时任务：无未推送的当前公告，跳过推送。')
         return
       }
       
-      logger.info(`[Notice-plugin] 定时任务：开始推送公告到 ${enabledBots.length} 个可用账号`)
+      logger.info(`[Notice-plugin] 定时任务：检测到未推送的当前公告，开始推送公告到 ${enabledBots.length} 个可用账号`)
       pushAnnouncement(fakeEvent, true)
     }, {
       timezone: 'Asia/Shanghai'

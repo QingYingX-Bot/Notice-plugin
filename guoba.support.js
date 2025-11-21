@@ -8,9 +8,9 @@ export function supportGuoba() {
       name: 'Notice-plugin',
       title: '公告插件',
       description: '提供公告发布、推送、黑白名单、定时任务等功能',
-      author: '@QingYing',
-      authorLink: 'https://gitee.com/tttfff',
-      link: 'https://gitee.com/tttfff/notice-plugin',
+      author: '@QingYingX',
+      authorLink: 'https://gitee.com/QingYingX',
+      link: 'https://gitee.com/qingyingxbot/Notice-plugin',
       isV3: true,
       isV2: false,
       showInMenu: 'auto',
@@ -27,17 +27,17 @@ export function supportGuoba() {
         {
           field: 'enableSchedule',
           label: '启用定时推送',
-          bottomHelpMessage: '是否开启定时推送任务，每天在指定时间段自动推送公告',
+          bottomHelpMessage: '是否开启定时推送任务，每天在指定时间点自动推送未推送的公告',
           component: 'Switch'
         },
         {
           field: 'scheduleTime',
-          label: '定时推送时间段',
-          bottomHelpMessage: '定时推送任务的时间段，格式如：8:00-8:30',
+          label: '定时推送时间点',
+          bottomHelpMessage: '定时推送任务的时间点，格式如：8:00（24小时制，若时间到了且存在未推送的公告则自动推送）',
           component: 'Input',
           required: true,
           componentProps: {
-            placeholder: '请输入时间段，例：8:00-8:30'
+            placeholder: '请输入时间点，例：8:00'
           }
         },
         {
@@ -142,7 +142,7 @@ export function supportGuoba() {
           console.error('Notice-plugin 读取配置失败:', error)
           return {
             enableSchedule: true,
-            scheduleTime: "8:00-8:30",
+            scheduleTime: "8:00",
             logger: "info",
             multiAccount: {
               enabled: true,

@@ -6,7 +6,7 @@ const DEFAULT_CONFIG = {
   enabled: true,
   whitelist: [],
   blacklist: [],
-  pushInterval: 2000,
+  pushInterval: 15000,
   retryCount: 3,
   lastPushTime: 0
 }

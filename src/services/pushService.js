@@ -2,10 +2,10 @@ import data from '../storage/redisStore.js'
 import { getAllBots, getAllPushableGroups, getAccountConfig, getPushStats } from './accountService.js'
 import { info, warn, error } from '../utils/logger.js'
 
-// 生成随机延迟（秒转毫秒）
-function randomDelay(seconds) {
-  const min = seconds * 0.8
-  const max = seconds * 1.2
+// 生成随机延迟（10-20秒）
+function randomDelay() {
+  const min = 10 // 最小延迟 10 秒
+  const max = 20 // 最大延迟 20 秒
   const delaySeconds = Math.random() * (max - min) + min
   return Math.floor(delaySeconds * 1000) // 转换为毫秒
 }
@@ -27,10 +27,49 @@ function createSafeSend(botsMap) {
         return false
       }
       
-      await group.sendMsg(msg)
+      const result = await group.sendMsg(msg)
+      
+      // 检查返回值：如果为 undefined、null 或包含错误信息，视为失败
+      if (!result) {
+        await error('账号向群发送消息失败：返回值为空', { uin, groupId, result })
+        return false
+      }
+      
+      // 检查是否包含错误信息（某些适配器可能返回包含 error 的对象）
+      if (result.error || (Array.isArray(result.error) && result.error.length > 0)) {
+        const errorMsg = Array.isArray(result.error) ? result.error[0] : result.error
+        await error('账号向群发送消息失败', { 
+          uin, 
+          groupId, 
+          error: errorMsg?.message || errorMsg?.code || errorMsg || '未知错误',
+          errorCode: errorMsg?.code
+        })
+        return false
+      }
+      
+      // 检查是否包含 ApiRejection 错误（错误代码 120 表示禁言等）
+      if (result.code && result.code !== 0) {
+        await error('账号向群发送消息失败', { 
+          uin, 
+          groupId, 
+          error: result.message || `错误代码: ${result.code}`,
+          errorCode: result.code
+        })
+        return false
+      }
+      
       return true
     } catch (err) {
-      await error('账号向群发送消息失败', { uin, groupId, error: err.message })
+      // 检查是否是 ApiRejection 错误
+      const errorCode = err.code || err.retcode
+      const errorMessage = err.message || err.msg || err.toString()
+      
+      await error('账号向群发送消息失败', { 
+        uin, 
+        groupId, 
+        error: errorMessage,
+        errorCode: errorCode
+      })
       return false
     }
   }
@@ -79,7 +118,7 @@ export async function pushAnnouncement (e, isCronJob = false) {
   const accountStats = {}
   let sentCount = 0
 
-  const messageToSend = `【公告通知】\n--------------------\n${notice.content}\n--------------------\n${notice.timestamp}`
+  const messageToSend = `【公告通知】\n--------\n${notice.content}\n--------\n${notice.timestamp}`
 
   // 计算进度报告间隔
   const progressInterval = Math.max(10, Math.ceil(totalGroups / 5))
@@ -109,10 +148,9 @@ export async function pushAnnouncement (e, isCronJob = false) {
         e.reply(`推送进度: ${sentCount}/${totalGroups} (成功: ${successCount})`, true)
       }
 
-      // 推送间隔延迟（将毫秒转换为秒）
-      const intervalMs = accountConfig.pushInterval || 2000
+      // 推送间隔延迟（10-20秒随机）
       if (sentCount < totalGroups) { // 最后一个不需要延迟
-        const delayMs = randomDelay(intervalMs / 1000) // 传入秒数
+        const delayMs = randomDelay() // 生成 10-20 秒随机延迟
         await new Promise(resolve => setTimeout(resolve, delayMs))
       }
     }

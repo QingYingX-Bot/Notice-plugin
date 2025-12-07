@@ -3,7 +3,7 @@ scheduleTime: "8:00"
 logger: "info"
 multiAccount:
   enabled: true
-  defaultPushInterval: 2000
+  defaultPushInterval: 15000
   defaultRetryCount: 3
   autoEnableNewAccounts: true
 pushSettings:

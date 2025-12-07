@@ -194,7 +194,7 @@ export class NoticeConfig extends plugin {
         } else {
           // 格式化显示信息
           const title = `📋 公告全局${listName}查询结果`
-          const summary = `━━━━━━━━━━━━━━━━━━━━\n📊 统计信息：共 ${groupDetails.length} 个群\n📅 查询时间：${new Date().toLocaleString('zh-CN')}\n━━━━━━━━━━━━━━━━━━━━`
+          const summary = `━━━━━━━\n📊 统计信息：共 ${groupDetails.length} 个群\n📅 查询时间：${new Date().toLocaleString('zh-CN')}\n━━━━━━━`
           
           const groupList = groupDetails.map((group, index) => 
             `${index + 1}. ${group.groupName}（${group.groupId}）`
@@ -306,7 +306,7 @@ export class NoticeConfig extends plugin {
       msg += `\n${i + 1}. ${nickname} (${uin})\n`
       msg += `   📊 群数: ${groups.length}\n`
       msg += `   ${config.enabled ? '✅' : '❌'} 状态: ${config.enabled ? '启用' : '禁用'}\n`
-      msg += `   ⏱️  推送间隔: ${config.pushInterval || 2000}ms\n`
+      msg += `   ⏱️  推送间隔: ${config.pushInterval || 15000}ms\n`
     }
 
     await e.reply(msg, true)
@@ -445,7 +445,7 @@ export class NoticeConfig extends plugin {
       
       msg += `\n【${nickname} (${uin})】\n`
       msg += `  ${config.enabled ? '✅' : '❌'} 启用状态: ${config.enabled ? '是' : '否'}\n`
-      msg += `  ⏱️  推送间隔: ${config.pushInterval || 2000}ms\n`
+      msg += `  ⏱️  推送间隔: ${config.pushInterval || 15000}ms\n`
       msg += `  🔄 重试次数: ${config.retryCount || 3}\n`
       msg += `  ✅ 账号白名单: ${config.whitelist?.length > 0 ? config.whitelist.join(', ') : '无'}\n`
       msg += `  ❌ 账号黑名单: ${config.blacklist?.length > 0 ? config.blacklist.join(', ') : '无'}\n`
@@ -510,8 +510,8 @@ export class NoticeConfig extends plugin {
         break
       case '间隔':
         const interval = parseInt(value)
-        if (isNaN(interval) || interval < 500 || interval > 10000) {
-          await e.reply('推送间隔必须在 500-10000ms 之间。', true)
+        if (isNaN(interval) || interval < 10000 || interval > 20000) {
+          await e.reply('推送间隔必须在 10000-20000ms (10-20秒) 之间。', true)
           return
         }
         config.pushInterval = interval

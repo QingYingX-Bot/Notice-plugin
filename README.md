@@ -1,10 +1,6 @@
+![Notice-plugin](https://socialify.git.ci/QingYingX-Bot/Notice-plugin/image?description=1&font=Inter&forks=1&issues=1&language=1&name=1&owner=1&pattern=Circuit+Board&pulls=1&stargazers=1&theme=Dark)
+
 # 📢 Notice-plugin
-
-[![star](https://gitee.com/qingyingxbot/Notice-plugin/badge/star.svg?theme=gray)](https://gitee.com/qingyingxbot/Notice-plugin/stargazers)
-[![version](https://img.shields.io/badge/version-1.0.6-white)](https://gitee.com/qingyingxbot/Notice-plugin/releases)
-[![license](https://img.shields.io/badge/license-MIT-white)](https://gitee.com/qingyingxbot/Notice-plugin/blob/master/LICENSE)
-
----
 
 **✨ Yunzai-Bot 高级公告插件，支持全局多账号公告推送、黑白名单、定时任务等丰富功能！**
 
@@ -33,17 +29,25 @@ Notice-plugin 是一个为 Yunzai-Bot 开发的公告插件，支持主人便捷
 ---
 
 ## 🚀 安装方法
-在 Yunzai-Bot 根目录下执行：
+
+### 1. 克隆仓库
+
+#### Gitee（国内推荐）
 
 ```bash
-# 使用 Git 安装
-$ git clone https://gitee.com/qingyingxbot/Notice-plugin.git ./plugins/Notice-plugin
+git clone https://gitee.com/qingyingxbot/Notice-plugin.git ./plugins/Notice-plugin
+```
 
-# 进入插件目录
-$ cd ./plugins/Notice-plugin
+#### GitHub
 
-# 安装依赖
-$ pnpm i
+```bash
+git clone https://github.com/QingYingX-Bot/Notice-plugin.git ./plugins/Notice-plugin
+```
+
+### 2. 安装依赖
+
+```bash
+pnpm install --filter=Notice-plugin
 ```
 
 ---
@@ -201,11 +205,7 @@ Notice-plugin/
 ---
 
 ## 💬 问题反馈
-- 欢迎提交 [Issue](https://gitee.com/qingyingxbot/Notice-plugin/issue) 反馈问题或建议
-- 欢迎PR贡献代码，完善功能
-- QQ群：822074453
-
----
+如有任何问题，欢迎提交 [Issue](https://gitee.com/qingyingxbot/Notice-plugin/issues) | [GitHub Issues](https://github.com/QingYingX-Bot/Notice-plugin/issues) 反馈。
 
 ## 📄 许可证
 本项目采用 **MIT 许可证**

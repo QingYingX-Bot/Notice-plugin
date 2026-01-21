@@ -1,6 +1,6 @@
 ![Notice-plugin](https://socialify.git.ci/QingYingX-Bot/Notice-plugin/image?description=1&font=Inter&forks=1&issues=1&language=1&name=1&owner=1&pattern=Circuit+Board&pulls=1&stargazers=1&theme=Dark)
 
-# 📢 Notice-plugin
+# 📢 Notice-plugin [现已暂停更新]
 
 **✨ Yunzai-Bot 高级公告插件，支持全局多账号公告推送、黑白名单、定时任务等丰富功能！**
 
